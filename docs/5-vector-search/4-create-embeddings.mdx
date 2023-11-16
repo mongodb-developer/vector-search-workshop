@@ -1,0 +1,98 @@
+# 👐 Create embeddings
+
+We'll be using a fake dataset of markdown documents for a fake JavaScript library called FancyWidget.js. This set of documents can be found in the `_workshop_assets` folder of the demo repo.
+
+If you look at the `package.js` file, you'll see the available scripts. One is called `embed` and runs a script called `createEmbeddings.mjs`. Let's take a look at this file to see what it does.
+
+```js
+import { promises as fsp } from "fs";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { MongoClient } from "mongodb";
+import "dotenv/config";
+
+const client = new MongoClient(process.env.MONGODB_ATLAS_URI || "");
+const dbName = "docs";
+const collectionName = "embeddings";
+const collection = client.db(dbName).collection(collectionName);
+
+const docs_dir = "_workshop_assets/fake_docs";
+const fileNames = await fsp.readdir(docs_dir);
+console.log(fileNames);
+for (const fileName of fileNames) {
+  const document = await fsp.readFile(`${docs_dir}/${fileName}`, "utf8");
+  console.log(`Vectorizing ${fileName}`);
+  
+  const splitter = RecursiveCharacterTextSplitter.fromLanguage("markdown", {
+    chunkSize: 500,
+    chunkOverlap: 50,
+  });
+  const output = await splitter.createDocuments([document]);
+  
+  await MongoDBAtlasVectorSearch.fromDocuments(
+    output,
+    new OpenAIEmbeddings(),
+    {
+      collection,
+      indexName: "default",
+      textKey: "text",
+      embeddingKey: "embedding",
+    }
+  );
+}
+
+console.log("Done: Closing Connection");
+await client.close();
+```
+
+This script is using the `langchain` library to create embeddings for each document in the `_workshop_assets/fake_docs` folder. It's using the `RecursiveCharacterTextSplitter` to split each document into chunks of 500 characters with a 50 character overlap. It's then using the `OpenAIEmbeddings` class to create embeddings for each chunk. Finally, it's using the `MongoDBAtlasVectorSearch` class to store the embeddings in a MongoDB Atlas cluster.
+
+## 🏃‍♀️ Run the script
+
+:::tip
+Be sure you have entered your OpenAI API key and MongoDB Atlas URI in the `.env` file.
+:::
+
+Run the script with the following command:
+
+```bash
+npm run embed
+```
+
+You should see output like this:
+
+```bash
+> node createEmbeddings.mjs
+
+[
+  'API_Reference.md',
+  'README.md',
+  'Quick_Start.md',
+  'Changelog.md',
+  'Contributing.md',
+  'Installation.md',
+  'Usage.md',
+  'LICENSE'
+]
+Vectorizing API_Reference.md
+Vectorizing README.md
+Vectorizing Quick_Start.md
+Vectorizing Changelog.md
+Vectorizing Contributing.md
+Vectorizing Installation.md
+Vectorizing Usage.md
+Vectorizing LICENSE
+Done: Closing Connection
+```
+
+## 👀 View the embeddings
+
+Now that we have created embeddings for each document, let's view them in the MongoDB Atlas UI.
+
+1. Open the MongoDB Atlas UI and navigate to the cluster you created earlier.
+2. Click the "Browse Collections" button.
+3. Click the "docs" database.
+4. Click the "embeddings" collection.
+
+You should see a list of documents along with the created embeddings. Expand one of the `embedding` fields to see the entire vector embedding array.

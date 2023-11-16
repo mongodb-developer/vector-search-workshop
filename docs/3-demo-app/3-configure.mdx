@@ -1,0 +1,49 @@
+import Screenshot from "@site/src/components/Screenshot";
+
+# 👐 Configure the Application
+
+Now that your environment is set up, you can configure the application.
+
+Open the file `.env.example`. This file contains the configuration for the application.
+
+The file should look like this:
+
+```bash
+NODE_ENV=development
+OPENAI_API_KEY=YOUR-KEY-HERE
+MONGODB_ATLAS_URI=YOUR-CONNECTION-STRING-HERE
+```
+
+## Enter your OpenAI API key
+
+Enter your OpenAI API key in the `OPENAI_API_KEY` parameter. This is the key you created in the [Create your OpenAI Account](/docs/2-openai/2-create-account) section.
+
+## Enter your MongoDB connection string
+
+To get your connection string, go back to the Atlas UI, and look for the **Connect** button.
+
+<Screenshot url="https://cloud.mongodb.com" src="img/screenshots/30-importing-data/2-get-connection-string/1-connect-button.png" alt="Screenshot of the connect button" />
+
+This will provide you with a modal that offers a number of different ways to connect to your database.
+
+<Screenshot url="https://cloud.mongodb.com" src="img/screenshots/30-importing-data/2-get-connection-string/2-connect-modal.png" alt="Screenshot of the connect modal" />
+
+Select **Compass**. While we won't be using Compass to import the data, it's an easy way to see your connection string.
+
+<Screenshot url="https://cloud.mongodb.com" src="img/screenshots/30-importing-data/2-get-connection-string/3-connect-compass.png" alt="Screenshot of the connection string" />
+
+Look for your connection string. It should look something like
+
+```
+mongodb+srv://<username>:<password>@<cluster-url>/
+```
+
+Enter your connection string in the `MONGODB_ATLAS_URI` parameter.
+
+:::tip
+Don't forget to replace `<password>` with the password you set when you created the cluster.
+:::
+
+## Save and rename the file
+
+Save the file as `.env` (without the `.example` extension).

@@ -1,0 +1,131 @@
+# 👐 Update API routes
+
+We're now ready to implement changes to our API route in order to utilize Vector Search with our new embeddings.
+
+The default API route for our chats can be found in `api/chat/route.ts`.
+
+## Add a Vector Search route
+
+Before we modify that route, we'll implement a new route dedicated to handling Vector Search. Create a new file `api/vectorSearch/route.ts` and add the following code:
+
+```ts
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
+import mongoClientPromise from '@/app/lib/mongodb';
+
+export async function POST(req: Request) {
+  const client = await mongoClientPromise;
+  const dbName = "docs";
+  const collectionName = "embeddings";
+  const collection = client.db(dbName).collection(collectionName);
+  
+  const question = await req.text();
+
+  const vectorStore = new MongoDBAtlasVectorSearch(
+    new OpenAIEmbeddings({
+      modelName: 'text-embedding-ada-002',
+      stripNewLines: true,
+    }), {
+    collection,
+    indexName: "default",
+    textKey: "text", 
+    embeddingKey: "embedding",
+  });
+
+  const retriever = vectorStore.asRetriever({
+    searchType: "mmr",
+    searchKwargs: {
+      fetchK: 20,
+      lambda: 0.1,
+    },
+  });
+  
+  const retrieverOutput = await retriever.getRelevantDocuments(question);
+  
+  return Response.json(retrieverOutput);
+}
+```
+
+In this route, we'll connect to MongoDB, but differently than we did before. Notice that we are importing `mongoClientPromise` from `@/app/lib/mongodb`. This is a promise that resolves to a MongoDB client. We'll use this promise to gloabally cache our MongoDB client, so that we don't have to connect to MongoDB every time we want to make a request. This is a common pattern in serverless applications, and it's a good idea to do this in order to avoid connection limits.
+
+We are also recieving the users prompt, or question, from the request body. Then we'll use the MongoDB Atlas Vector Search LangChain method to create vector embeddings for the users question. 
+
+Remember, we have to also create vector embeddings for the user interaction so that we can then compare it with the other vector embeddings we have stored in MongoDB for our custom data.
+
+We tell it which collection, index, text key, and embedding key to use. Then we do the search. We're using something called maximal marginal relevance to find the related documents.
+
+We can specify the number of results to fetch and how many of those top results to return. This allows us to refine how accurate we want to be. 
+
+Finally, we return the retriever output.
+
+## Update the `chat` route
+
+Now that we have a route dedicated to Vector Search, we can update our `chat` route to use it. Open `api/chat/route.ts` and replace the code with the following:
+
+```ts
+import { StreamingTextResponse, LangChainStream, Message } from "ai";
+import { ChatOpenAI } from "langchain/chat_models/openai";
+import { AIMessage, HumanMessage } from "langchain/schema";
+
+export const runtime = "edge";
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const currentMessageContent = messages[messages.length - 1].content;
+
+  const vectorSearch = await fetch("http://localhost:3000/api/vectorSearch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: currentMessageContent,
+  }).then((res) => res.json());
+
+  const TEMPLATE = `You are a very enthusiastic FancyWidget representative who loves to help people! Given the following sections from the FancyWidget documentation, answer the question using only that information, outputted in markdown format. If you are unsure and the answer is not explicitly written in the documentation, say "Sorry, I don't know how to help with that."
+  
+  Context sections:
+  ${JSON.stringify(vectorSearch)}
+
+  Question: """
+  ${currentMessageContent}
+  """
+  `;
+
+  messages[messages.length -1].content = TEMPLATE;
+
+  const { stream, handlers } = LangChainStream();
+
+  const llm = new ChatOpenAI({
+    modelName: "gpt-3.5-turbo",
+    streaming: true,
+  });
+
+  llm
+    .call(
+      (messages as Message[]).map((m) =>
+        m.role == "user"
+          ? new HumanMessage(m.content)
+          : new AIMessage(m.content)
+      ),
+      {},
+      [handlers]
+    )
+    .catch(console.error);
+
+  return new StreamingTextResponse(stream);
+}
+```
+
+We're using the same code as before, but we're now using the vector search route to get the context sections. We'll then use those context sections to create a template for the AI to answer the question.
+
+## Test it out
+
+Be sure you've saved all of the files and restart the dev server. 
+
+Now, when you ask a question about the FancyWidget documentation, you should get a response that is relevant to the question you asked.
+
+If you ask a question that is not in the documentation, you should get a response that says "Sorry, I don't know how to help with that."
+
+:::tip
+You can find a list of sample questions to ask in the `_workshop_assets/questions.txt` file.
+:::
