@@ -6,8 +6,43 @@ There are two components that you will need to do to implement vector search int
 
 First, you will need to create this mathematical representation of your data. This is called vectorization. In the Create Vectors section, you will learn how to create vectors with some of the major encoders.
 
+You will use [LangChain JS](https://js.langchain.com/docs/get_started/introduction) to create vectors for your dataset. LangChain JS is a JavaScript library that allows you to create vectors from text data. You can use it to create vectors for your dataset and for your query.
+```javascript
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
+... 
+ await MongoDBAtlasVectorSearch.fromDocuments(
+    docs,
+    new OpenAIEmbeddings(),
+    {
+      collection,
+      indexName: "vector_index",
+      textKey: "text",
+      embeddingKey: "embedding",
+    }
+  );
+```
+
 ## Vectorize your query
 
 The second component is to vectorize your query. This is the same process as vectorizing your dataset, but instead of vectorizing a large dataset, you are vectorizing a single query.
 
 It is important to use the same encoder for both your dataset and your query. This is because the encoder learns a specific way to represent the data. If you use a different encoder, the vectors will be different and the search will not work.
+
+The query is performed by the [LangChain JS](https://js.langchain.com/docs/get_started/introduction) library. You can use the `MongoDBAtlasVectorSearch` class to perform the search.
+```javascript
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
+...
+const vectorStore = new MongoDBAtlasVectorSearch(
+        new OpenAIEmbeddings({
+          stripNewLines: true,
+        }), dbConfig);
+        
+const question = await req.text();
+const retriever = await vectorStore.asRetriever({
+searchType: "mmr", // Defaults to "similarity
+searchKwargs: {
+    fetchK: 20,
+    lambda: 0.1,
+},
+});
+```

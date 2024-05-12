@@ -7,8 +7,8 @@ If you look at the `package.js` file, you'll see the available scripts. One is c
 ```js
 import { promises as fsp } from "fs";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
 import { MongoClient } from "mongodb";
 import "dotenv/config";
 
@@ -46,7 +46,7 @@ console.log("Done: Closing Connection");
 await client.close();
 ```
 
-This script is using the `langchain` library to create embeddings for each document in the `_workshop_assets/fake_docs` folder. It's using the `RecursiveCharacterTextSplitter` to split each document into chunks of 500 characters with a 50 character overlap. It's then using the `OpenAIEmbeddings` class to create embeddings for each chunk. Finally, it's using the `MongoDBAtlasVectorSearch` class to store the embeddings in a MongoDB Atlas cluster.
+This script is using the `langchain` [library](https://www.mongodb.com/docs/atlas/atlas-vector-search/ai-integrations/langchain-js/) to create embeddings for each document in the `_workshop_assets/fake_docs` folder. It's using the `RecursiveCharacterTextSplitter` to split each document into chunks of 500 characters with a 50 character overlap. It's then using the `OpenAIEmbeddings` class to create embeddings for each chunk. Finally, it's using the `MongoDBAtlasVectorSearch` class to store the embeddings in a MongoDB Atlas cluster.
 
 ## 🏃‍♀️ Run the script
 
