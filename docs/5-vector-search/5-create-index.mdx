@@ -21,20 +21,16 @@ This time, you will use the **JSON Editor** to create your index
 <Screenshot src="img/screenshots/7-vector-search/6-create-index/3-json-editor.png" alt="The 'Create Index' page with the 'JSON Editor' tab highlighted" url="https://cloud.mongodb.com" />
 
 
-Select your database and collection, leave the index name set to `default`, and add the following code in the JSON editor:
+Select your database and collection, leave the index name set to `vector_index`, and add the following code in the JSON editor:
 
 ```js
 {
-  "mappings": {
-    "dynamic": true,
-    "fields": {
-      "embedding": {
-        "dimensions": 1536,
-        "similarity": "cosine",
-        "type": "knnVector"
-      }
-    }
-  }
+  "fields": [{
+    "type": "vector",
+    "path": "embedding",
+    "numDimensions": 1536,
+    "similarity": "cosine"
+  }]
 }
 ```
 

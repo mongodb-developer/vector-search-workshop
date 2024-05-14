@@ -9,40 +9,40 @@ The default API route for our chats can be found in `api/chat/route.ts`.
 Before we modify that route, we'll implement a new route dedicated to handling Vector Search. Create a new file `api/vectorSearch/route.ts` and add the following code:
 
 ```ts
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
+import { OpenAIEmbeddings } from "@langchain/openai";
 import mongoClientPromise from '@/app/lib/mongodb';
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
 
 export async function POST(req: Request) {
-  const client = await mongoClientPromise;
-  const dbName = "docs";
-  const collectionName = "embeddings";
-  const collection = client.db(dbName).collection(collectionName);
-  
-  const question = await req.text();
+    const client = await mongoClientPromise;
+    const dbName = "docs";
+    const collectionName = "embeddings";
+    const collection = client.db(dbName).collection(collectionName);
 
-  const vectorStore = new MongoDBAtlasVectorSearch(
-    new OpenAIEmbeddings({
-      modelName: 'text-embedding-ada-002',
-      stripNewLines: true,
-    }), {
-    collection,
-    indexName: "default",
-    textKey: "text", 
-    embeddingKey: "embedding",
-  });
+    const dbConfig = {  
+        collection: collection,
+        indexName: "vector_index", // The name of the Atlas search index to use.
+        textKey: "text", // Field name for the raw text content. Defaults to "text".
+        embeddingKey: "embedding", // Field name for the vector embeddings. Defaults to "embedding".
+      };
+      const vectorStore = new MongoDBAtlasVectorSearch(
+        new OpenAIEmbeddings({
+          stripNewLines: true,
+        }), dbConfig);
+        
+      const question = await req.text();
+      const retriever = await vectorStore.asRetriever({
+        searchType: "mmr", // Defaults to "similarity
+        searchKwargs: {
+          fetchK: 20,
+          lambda: 0.1,
+        },
+      });
+    
 
-  const retriever = vectorStore.asRetriever({
-    searchType: "mmr",
-    searchKwargs: {
-      fetchK: 20,
-      lambda: 0.1,
-    },
-  });
+    const retrievedResults = await retriever.getRelevantDocuments(question)
   
-  const retrieverOutput = await retriever.getRelevantDocuments(question);
-  
-  return Response.json(retrieverOutput);
+    return Response.json(retrievedResults);
 }
 ```
 
